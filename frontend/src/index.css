@@ -1,0 +1,51 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-surface text-slate-800 antialiased;
+    font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+  }
+}
+
+@layer components {
+  .kpi-card {
+    @apply bg-white rounded-xl shadow-sm border border-border p-5 flex flex-col gap-1;
+  }
+  .page-title {
+    @apply text-2xl font-bold text-slate-800 mb-1;
+  }
+  .page-subtitle {
+    @apply text-sm text-slate-500 mb-6;
+  }
+  .section-title {
+    @apply text-base font-semibold text-slate-700 mb-3;
+  }
+  .card {
+    @apply bg-white rounded-xl shadow-sm border border-border p-5;
+  }
+  .btn-primary {
+    @apply bg-slate-800 text-white rounded-lg px-4 py-2 text-sm font-medium
+           hover:bg-slate-700 transition-colors;
+  }
+  .btn-ghost {
+    @apply bg-white border border-border text-slate-700 rounded-lg px-4 py-2 text-sm font-medium
+           hover:bg-slate-50 transition-colors;
+  }
+  .filter-select {
+    @apply w-full border border-border rounded-lg px-3 py-2 text-sm bg-white
+           focus:outline-none focus:ring-2 focus:ring-slate-300;
+  }
+  .badge-ready    { @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-ready-light text-ready-dark; }
+  .badge-review   { @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-review-light text-review-dark; }
+  .badge-localize { @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-localize-light text-localize-dark; }
+  .badge-escalate { @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-escalate-light text-escalate-dark; }
+}
+
+/* Recharts override – keep tooltips clean */
+.recharts-tooltip-wrapper .recharts-default-tooltip {
+  border-radius: 8px !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 4px 12px rgba(0,0,0,.08) !important;
+}

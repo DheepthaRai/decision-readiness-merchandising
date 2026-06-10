@@ -1,0 +1,123 @@
+# ── Dataset source ──────────────────────────────────────────────────────────
+dataset:
+  repo_id: "Dingdong-Inc/FreshRetailNet-50K"
+  split: "train"          # use "eval" for quick dev runs
+  cache_dir: "data/raw"
+
+# ── Column name mappings (dataset → internal names) ────────────────────────
+columns:
+  sku_id: "product_id"
+  store_id: "store_id"
+  city_id: "city_id"
+  date: "dt"
+  sale_amount: "sale_amount"
+  hours_sale: "hours_sale"           # list[float], len=24
+  hours_stock_status: "hours_stock_status"  # list[int], len=24, 0=stockout 1=in-stock
+  stock_count: "stock_hour6_22_cnt"
+  discount: "discount"
+  holiday_flag: "holiday_flag"
+  activity_flag: "activity_flag"
+  precpt: "precpt"
+  avg_temperature: "avg_temperature"
+  avg_humidity: "avg_humidity"
+  avg_wind_level: "avg_wind_level"
+  mgmt_group: "management_group_id"
+  cat1: "first_category_id"
+  cat2: "second_category_id"
+  cat3: "third_category_id"
+
+# ── Derived column names (used throughout pipeline) ────────────────────────
+derived:
+  week: "week"
+  dow: "dow"
+  month: "month"
+  is_weekend: "is_weekend"
+  stockout_hours: "stockout_hours"
+  total_hours: "total_hours_active"   # hours 6-22 = 17 operational hours
+  stockout_rate: "stockout_rate"
+  observed_units: "observed_units"
+  recovered_units: "recovered_units"
+  estimated_true_demand: "estimated_true_demand"
+
+# ── Business value proxy ────────────────────────────────────────────────────
+# Used in the dashboard to convert units → estimated dollar value.
+# Default $3.50 reflects a typical fresh-retail average selling price.
+# Change this to match your category's actual average unit value.
+business:
+  avg_unit_value: 3.50           # USD per unit
+
+# ── Scoring weights ──────────────────────────────────────────────────────────
+scoring:
+  weights:
+    velocity: 0.25
+    consistency: 0.20
+    localization: 0.15
+    recovered_demand: 0.15
+    promo_independence: 0.10
+    low_volatility: 0.10
+    low_stockout_risk: 0.05
+
+# ── Recommendation thresholds ───────────────────────────────────────────────
+# Calibrated to FreshRetailNet-50K (eval split):
+#   stockout_rate median = 0.85 → escalate only at the extreme tail
+#   active_days = 2 or 5 in eval (partial weeks) → min_active_days = 2
+#   HHI median = 0.48 → localize only clearly concentrated SKUs (≥ 0.75)
+#   readiness_score max = 86.6 → ready threshold set at ~75th pct of scores
+thresholds:
+  ready_min_score: 62             # ≈ 75th percentile of readiness scores
+  ready_max_stockout: 0.90        # well above dataset median of 0.85
+  ready_max_volatility_pct: 75    # percentile rank
+  ready_max_promo_dep_pct: 75
+  review_min_score: 38            # ≈ 25th percentile
+  localize_min_hhi: 0.75          # concentrated demand (top ~30% of HHI)
+  escalate_min_stockout: 0.97     # genuinely extreme tail (>95th pct)
+  escalate_min_recovered_pct: 0.90  # recovered/(recovered+observed) >= this
+  min_active_days: 2              # minimum days for meaningful scoring
+
+# ── Operational hours ────────────────────────────────────────────────────────
+ops:
+  active_hours_start: 6
+  active_hours_end: 22            # inclusive, so 17 hours
+
+# ── City Proxy Mapping ────────────────────────────────────────────────────────
+# The dataset anonymises all geographic identifiers using integer city_id values
+# 0–17 in place of real city names. No official mapping is published by the
+# dataset authors (Dingdong-Inc/FreshRetailNet-50K on HuggingFace).
+#
+# The mapping below is inferred from climate fingerprinting: daily temperature,
+# relative humidity, precipitation, and wind speed from the late-June / early-July
+# 2024 evaluation period were matched against published historical climatology for
+# cities in Dingdong's known operating footprint.
+#
+# Confidence levels:
+#   high  — multiple independent signals align (humidity, temperature, store count)
+#   med   — primary signal consistent; 1–2 other candidate cities share similar profiles
+#   low   — profile plausible but not uniquely distinguishing; store count is small (≤ 10)
+#
+# ⚠ This mapping is a PROXY only. Not confirmed by Dingdong-Inc or the dataset
+#   authors. Use for exploratory analysis and tooling demos only.
+#
+# Key discriminating signal: relative humidity (RH) in late June.
+#   Northern cities (Beijing id=3, Tianjin id=8) → RH ≈ 58–60% (uniquely dry)
+#   All southern/eastern cities → RH > 70%
+#   Shanghai (id=0) confirmed by store count (~290 stores = Dingdong HQ market)
+#
+city_proxy_map:
+  0:  { name: Shanghai,  confidence: high, climate_basis: "290 stores; Dingdong HQ; 28.8°C, RH 79.7%" }
+  1:  { name: Changsha,  confidence: low,  climate_basis: "30.4°C, RH 76.8%; hot inland central China" }
+  2:  { name: Chongqing, confidence: low,  climate_basis: "Hottest at 31.0°C; mountain basin heat island" }
+  3:  { name: Beijing,   confidence: high, climate_basis: "RH 60.0% — uniquely dry; only large city below 70%" }
+  4:  { name: Nanjing,   confidence: med,  climate_basis: "Highest precipitation 10.6 mm/day; 29.5°C, RH 79%" }
+  5:  { name: Wuhan,     confidence: low,  climate_basis: "29.2°C, RH 78.5%; furnace city summer profile" }
+  6:  { name: Shenzhen,  confidence: med,  climate_basis: "Southern coastal; elevated wind 2.40 m/s; RH 80%" }
+  7:  { name: Chengdu,   confidence: low,  climate_basis: "30.2°C, moderate humidity; Sichuan basin" }
+  8:  { name: Tianjin,   confidence: high, climate_basis: "RH 58.6% — matches Beijing dry northern profile; 3 stores" }
+  9:  { name: Kunshan,   confidence: low,  climate_basis: "6 stores; Shanghai-Suzhou corridor" }
+  10: { name: Changzhou, confidence: low,  climate_basis: "6 stores; very rainy 9.4 mm/day; inland Jiangsu" }
+  11: { name: Ningbo,    confidence: med,  climate_basis: "38 stores; rainy 8.1 mm/day; coastal Zhejiang" }
+  12: { name: Hangzhou,  confidence: med,  climate_basis: "107 stores; Dingdong #2 market; 29°C, RH 77%" }
+  13: { name: Guangzhou, confidence: med,  climate_basis: "90 stores; major southern city; 29°C, RH 78%" }
+  14: { name: Foshan,    confidence: low,  climate_basis: "9 stores; adjacent to Guangzhou; nearly identical climate" }
+  15: { name: "Xi'an",   confidence: low,  climate_basis: "30.4°C; hot dry inland northwest summer" }
+  16: { name: Suzhou,    confidence: med,  climate_basis: "89 stores; core Yangtze Delta market; 28°C, RH 77%" }
+  17: { name: Jiaxing,   confidence: low,  climate_basis: "5 stores; very rainy 9.7 mm/day; between Shanghai and Hangzhou" }

@@ -1,0 +1,9 @@
+pandas>=2.0
+numpy>=1.24
+streamlit>=1.32
+plotly>=5.18
+scikit-learn>=1.4
+datasets>=2.18
+pyarrow>=14.0
+huggingface_hub>=0.21
+pyyaml>=6.0
