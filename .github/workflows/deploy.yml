@@ -34,6 +34,9 @@ jobs:
         run: pip install -r requirements.txt
 
       # ── 3. Run pipeline (eval split = faster, ~350K rows) ──────────────────
+      - name: Create output directories
+        run: mkdir -p outputs data/interim data/processed
+
       - name: Run data pipeline
         run: python run_pipeline.py --split eval
         env:
