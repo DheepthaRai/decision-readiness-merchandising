@@ -63,16 +63,22 @@ export const CITY_MAP = {
  * @param {number|string} id - The city_id value from the dataset
  * @returns {string}
  */
+/**
+ * Returns a display string including the city ID for unambiguous identification,
+ * e.g. "Shanghai (city 0)". Falls back to "City {id}" if unmapped.
+ *
+ * @param {number|string} id
+ * @returns {string}
+ */
 export function getCityLabel(id) {
   const entry = CITY_MAP[Number(id)]
   if (!entry) return `City ${id}`
-  const conf = entry.confidence === 'high' ? '' : entry.confidence === 'med' ? ' ?' : ' ??'
-  return `${entry.name}${conf} (city ${id})`
+  return `${entry.name} (city ${id})`
 }
 
 /**
- * Returns just the city name (no ID suffix), for compact display contexts.
- * Appends '?' for med confidence and '??' for low confidence.
+ * Returns just the city name for compact table/chart display.
+ * Falls back to "City {id}" if unmapped.
  *
  * @param {number|string} id
  * @returns {string}
@@ -80,6 +86,5 @@ export function getCityLabel(id) {
 export function getCityName(id) {
   const entry = CITY_MAP[Number(id)]
   if (!entry) return `City ${id}`
-  const conf = entry.confidence === 'high' ? '' : entry.confidence === 'med' ? ' ?' : ' ??'
-  return `${entry.name}${conf}`
+  return entry.name
 }
