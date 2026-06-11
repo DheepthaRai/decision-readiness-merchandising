@@ -1,0 +1,20 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <script>
+      // GitHub Pages SPA redirect trick.
+      // When GH Pages 404s on a deep path, this page fires and encodes
+      // the full URL into a query string, then redirects to the root.
+      // index.html picks it up and restores the URL via history.replaceState.
+      var l = window.location;
+      l.replace(
+        l.protocol + '//' + l.hostname + (l.port ? ':' + l.port : '') +
+        l.pathname.split('/').slice(0, 2).join('/') +
+        '/?p=' + encodeURIComponent(l.pathname.slice(1) + (l.search ? '&' + l.search.slice(1) : '')) +
+        l.hash
+      );
+    </script>
+  </head>
+  <body></body>
+</html>
