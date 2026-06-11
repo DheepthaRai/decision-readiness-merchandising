@@ -1,56 +1,28 @@
+import MultiSelect from './MultiSelect'
 import { getCityName } from '../utils/cityMap'
 
-export default function FilterBar({ filters, setFilters, options }) {
-  const set = (key) => (e) => setFilters(f => ({ ...f, [key]: e.target.value }))
+export default function FilterBar({ filters, setFilters, options, clearAll }) {
+  const set = (key) => (vals) => setFilters(f => ({ ...f, [key]: vals }))
 
-  // Build city options as { value, label } pairs so the dropdown shows city names
-  // while the filter value remains the raw city_id string (which the filter predicate compares).
+  // Build city options as {value, label} so dropdown shows names but stores raw IDs
   const cityOptions = options.cities.map(id => ({
     value: id,
     label: getCityName(id),
   }))
 
   return (
-    <div className="flex flex-wrap gap-3 mb-6">
-      <Select label="Week"   value={filters.week}  onChange={set('week')}  options={options.weeks} />
-      <SelectLabeled label="City" value={filters.city} onChange={set('city')} options={cityOptions} />
-      <Select label="Store"  value={filters.store} onChange={set('store')} options={options.stores} />
-      <Select label="SKU"    value={filters.sku}   onChange={set('sku')}   options={options.skus} />
-      <Select label="Class"  value={filters.cls}   onChange={set('cls')}   options={options.classes} />
+    <div className="flex flex-wrap gap-3 mb-6 items-end">
+      <MultiSelect label="Week"   options={options.weeks}   selected={filters.week}  onChange={set('week')}  width="w-36" />
+      <MultiSelect label="City"   options={cityOptions}     selected={filters.city}  onChange={set('city')}  width="w-48" />
+      <MultiSelect label="Store"  options={options.stores}  selected={filters.store} onChange={set('store')} width="w-36" />
+      <MultiSelect label="SKU"    options={options.skus}    selected={filters.sku}   onChange={set('sku')}   width="w-36" />
+      <MultiSelect label="Class"  options={options.classes} selected={filters.cls}   onChange={set('cls')}   width="w-44" />
       <button
         className="btn-ghost self-end"
-        onClick={() => setFilters({ week: '', city: '', store: '', sku: '', cls: '' })}
+        onClick={clearAll ?? (() => setFilters({ week: [], city: [], store: [], sku: [], cls: [] }))}
       >
-        Clear
+        Clear all
       </button>
-    </div>
-  )
-}
-
-/** Plain string options */
-function Select({ label, value, onChange, options }) {
-  return (
-    <div className="flex flex-col gap-1">
-      <label className="text-xs font-medium text-slate-500">{label}</label>
-      <select className="filter-select w-44" value={value} onChange={onChange}>
-        <option value="">All</option>
-        {options.map(o => <option key={o} value={o}>{o}</option>)}
-      </select>
-    </div>
-  )
-}
-
-/** Options with separate value / label (used for cities) */
-function SelectLabeled({ label, value, onChange, options }) {
-  return (
-    <div className="flex flex-col gap-1">
-      <label className="text-xs font-medium text-slate-500">{label}</label>
-      <select className="filter-select w-52" value={value} onChange={onChange}>
-        <option value="">All</option>
-        {options.map(o => (
-          <option key={o.value} value={o.value}>{o.label}</option>
-        ))}
-      </select>
     </div>
   )
 }

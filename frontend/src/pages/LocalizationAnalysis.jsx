@@ -6,6 +6,7 @@ import {
 import { useRecommendations } from '../hooks/useData'
 import { LoadingSpinner, ErrorState } from '../components/LoadingState'
 import { getCityName } from '../utils/cityMap'
+import MultiSelect from '../components/MultiSelect'
 
 const AXIS_LABEL = { fontSize: 11, fill: '#64748b' }
 
@@ -49,8 +50,8 @@ function HHIGauge({ hhi }) {
 
 export default function LocalizationAnalysis() {
   const { data, loading, error } = useRecommendations()
-  const [selectedSku, setSelectedSku] = useState('')
-  const [selectedCity, setSelectedCity] = useState('')
+  const [selectedSkus, setSelectedSkus] = useState([])   // [] = all
+  const [selectedCities, setSelectedCities] = useState([]) // [] = all (for store ranking)
 
   const skus = useMemo(() => {
     const ids = [...new Set(data.map(r => r.sku_id).filter(v => v != null))]
@@ -59,8 +60,8 @@ export default function LocalizationAnalysis() {
 
   const skuRows = useMemo(() =>
     // eslint-disable-next-line eqeqeq
-    selectedSku ? data.filter(r => r.sku_id == selectedSku) : data,
-  [data, selectedSku])
+    selectedSkus.length ? data.filter(r => selectedSkus.some(s => s == r.sku_id)) : data,
+  [data, selectedSkus])
 
   // Store count per city across the FULL dataset (not just the SKU slice),
   // used to normalise demand so city size doesn't inflate HHI.
@@ -115,11 +116,12 @@ export default function LocalizationAnalysis() {
 
   const storeRanking = useMemo(() => {
     // eslint-disable-next-line eqeqeq
-    const base = selectedSku ? data.filter(r => r.sku_id == selectedSku) : data
-    const city = selectedCity || (cities[0] ?? '')
+    const base = selectedSkus.length ? data.filter(r => selectedSkus.some(s => s == r.sku_id)) : data
+    // If cities selected use those; otherwise default to first city
+    const activeCities = selectedCities.length ? selectedCities : [cities[0] ?? '']
     return base
       // eslint-disable-next-line eqeqeq
-      .filter(r => r.city_id == city)
+      .filter(r => activeCities.some(c => c == r.city_id))
       .reduce((acc, r) => {
         const s = String(r.store_id)
         if (!acc[s]) acc[s] = { store_id: s, demand: 0, stockout_rate: 0, count: 0 }
@@ -128,7 +130,7 @@ export default function LocalizationAnalysis() {
         acc[s].count++
         return acc
       }, {})
-  }, [data, selectedSku, selectedCity, cities])
+  }, [data, selectedSkus, selectedCities, cities])
 
   const storeRows = Object.values(storeRanking)
     .map(s => ({ ...s, stockout_rate: s.count ? s.stockout_rate / s.count : 0 }))
@@ -143,22 +145,29 @@ export default function LocalizationAnalysis() {
       <p className="page-subtitle">Understand where demand is concentrated and how to right-size distribution.</p>
 
       {/* Selectors */}
-      <div className="flex flex-wrap gap-4 mb-6">
-        <div>
-          <label className="block text-xs font-medium text-slate-500 mb-1">SKU — controls HHI and demand chart</label>
-          <select className="filter-select w-48"
-            value={selectedSku} onChange={e => setSelectedSku(e.target.value)}>
-            <option value="">All SKUs</option>
-            {skus.map(s => <option key={s} value={s}>{s}</option>)}
-          </select>
-        </div>
-        <div>
-          <label className="block text-xs font-medium text-slate-500 mb-1">City — controls store ranking table only</label>
-          <select className="filter-select w-56"
-            value={selectedCity} onChange={e => setSelectedCity(e.target.value)}>
-            {cities.map(c => <option key={c} value={c}>{getCityName(c)}</option>)}
-          </select>
-        </div>
+      <div className="flex flex-wrap gap-4 mb-6 items-end">
+        <MultiSelect
+          label="SKU — controls HHI and demand chart"
+          options={skus}
+          selected={selectedSkus}
+          onChange={setSelectedSkus}
+          width="w-48"
+        />
+        <MultiSelect
+          label="City — controls store ranking table"
+          options={cities.map(c => ({ value: c, label: getCityName(c) }))}
+          selected={selectedCities}
+          onChange={setSelectedCities}
+          width="w-52"
+        />
+        {(selectedSkus.length > 0 || selectedCities.length > 0) && (
+          <button
+            className="btn-ghost self-end"
+            onClick={() => { setSelectedSkus([]); setSelectedCities([]) }}
+          >
+            Clear all
+          </button>
+        )}
       </div>
 
       {/* HHI gauge */}
@@ -170,7 +179,9 @@ export default function LocalizationAnalysis() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         <div className="card">
           <p className="section-title">
-            {selectedSku ? `Demand per Store by City — SKU ${selectedSku}` : 'Avg Demand per Store by City (all SKUs)'}
+            {selectedSkus.length === 0 ? 'Avg Demand per Store by City (all SKUs)'
+              : selectedSkus.length === 1 ? `Demand per Store by City — SKU ${selectedSkus[0]}`
+              : `Demand per Store by City — ${selectedSkus.length} SKUs`}
           </p>
           <p className="text-xs text-slate-400 mb-3">
             Normalised by store count — shows whether cities over- or under-perform relative to their market size
@@ -202,8 +213,10 @@ export default function LocalizationAnalysis() {
 
         <div className="card">
           <p className="section-title">
-            Store Ranking in {getCityName(selectedCity || cities[0] || '')}
-            {selectedSku ? ` · SKU ${selectedSku}` : ''}
+            {selectedCities.length === 0 ? `Store Ranking in ${getCityName(cities[0] || '')}`
+              : selectedCities.length === 1 ? `Store Ranking in ${getCityName(selectedCities[0])}`
+              : `Store Ranking across ${selectedCities.length} cities`}
+            {selectedSkus.length === 1 ? ` · SKU ${selectedSkus[0]}` : selectedSkus.length > 1 ? ` · ${selectedSkus.length} SKUs` : ''}
           </p>
           <p className="text-xs text-slate-400 mb-3">
             Use the City dropdown above to change which city is shown here
@@ -236,9 +249,13 @@ export default function LocalizationAnalysis() {
       </div>
 
       {/* Localization recommendation text */}
-      {selectedSku && (
+      {selectedSkus.length > 0 && (
         <div className="card">
-          <p className="section-title">Localization Recommendation for SKU {selectedSku}</p>
+          <p className="section-title">
+            {selectedSkus.length === 1
+              ? `Localization Recommendation for SKU ${selectedSkus[0]}`
+              : `Localization Recommendation — ${selectedSkus.length} SKUs`}
+          </p>
           <div className={`text-sm font-semibold ${hhiLabel(hhi).color} mb-1`}>
             {hhiLabel(hhi).label}
           </div>

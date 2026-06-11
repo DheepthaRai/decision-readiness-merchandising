@@ -3,26 +3,24 @@ import { useState, useMemo } from 'react'
 /**
  * Global filter state + filtered data derived from full recommendations dataset.
  *
- * PapaParse (dynamicTyping: true) parses numeric columns as JS numbers, so
- * sku_id, store_id, and city_id are numbers in the row objects. Filter values
- * from <select> elements are always strings (e.target.value). We use loose
- * equality (==) so that `135 == "135"` is true without needing String().
+ * Each filter dimension is now a string[] of selected values (empty = "All").
+ * Loose equality (==) is used so numeric columns from PapaParse dynamicTyping
+ * compare correctly against string values from select/checkbox inputs.
  */
 export function useFilters(data) {
   const [filters, setFilters] = useState({
-    week: '',
-    city: '',
-    store: '',
-    sku: '',
-    cls: '',
+    week:  [],
+    city:  [],
+    store: [],
+    sku:   [],
+    cls:   [],
   })
 
   const options = useMemo(() => {
     const uniqStr = (key) =>
-      [...new Set(data.map(r => String(r[key] ?? '')).filter(Boolean))]
-        .sort()
+      [...new Set(data.map(r => String(r[key] ?? '')).filter(Boolean))].sort()
 
-    // Numeric sort for IDs that are integers in the data
+    // Numeric sort for integer ID columns
     const uniqNum = (key) =>
       [...new Set(data.map(r => r[key]).filter(v => v != null))]
         .sort((a, b) => Number(a) - Number(b))
@@ -38,20 +36,22 @@ export function useFilters(data) {
   }, [data])
 
   const filtered = useMemo(() => {
+    const { week, city, store, sku, cls } = filters
     return data.filter(r => {
-      // Use loose equality (==) to handle number vs string without explicit casting.
-      // The short-circuit `&&` ensures empty filter strings (falsy) are skipped.
-      if (filters.week  && r.week_label           !== filters.week)  return false
       // eslint-disable-next-line eqeqeq
-      if (filters.city  && r.city_id              != filters.city)   return false
+      if (week.length  && !week.includes(r.week_label))               return false
       // eslint-disable-next-line eqeqeq
-      if (filters.store && r.store_id             != filters.store)  return false
+      if (city.length  && !city.some(c  => c  == r.city_id))         return false
       // eslint-disable-next-line eqeqeq
-      if (filters.sku   && r.sku_id               != filters.sku)    return false
-      if (filters.cls   && r.recommendation_class !== filters.cls)   return false
+      if (store.length && !store.some(s => s  == r.store_id))        return false
+      // eslint-disable-next-line eqeqeq
+      if (sku.length   && !sku.some(s   => s  == r.sku_id))          return false
+      if (cls.length   && !cls.includes(r.recommendation_class))      return false
       return true
     })
   }, [data, filters])
 
-  return { filters, setFilters, options, filtered }
+  const clearAll = () => setFilters({ week: [], city: [], store: [], sku: [], cls: [] })
+
+  return { filters, setFilters, options, filtered, clearAll }
 }
