@@ -1,14 +1,18 @@
 import { useMemo } from 'react'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
-  Cell, CartesianGrid,
+  Cell, CartesianGrid, Label,
 } from 'recharts'
 import { useRecommendations } from '../hooks/useData'
 import { useFilters } from '../hooks/useFilters'
 import { CLASS_COLORS, AVG_UNIT_VALUE } from '../utils/constants'
+import { getCityName } from '../utils/cityMap'
 import KpiCard from '../components/KpiCard'
 import FilterBar from '../components/FilterBar'
 import { LoadingSpinner, ErrorState } from '../components/LoadingState'
+
+// Shared axis label style
+const AXIS_LABEL = { fontSize: 11, fill: '#64748b' }
 
 export default function Overview() {
   const { data, loading, error } = useRecommendations()
@@ -68,7 +72,7 @@ export default function Overview() {
       agg[r.city_id] = (agg[r.city_id] ?? 0) + (r.estimated_true_demand ?? 0)
     })
     return Object.entries(agg)
-      .map(([city, val]) => ({ city, demand: Math.round(val) }))
+      .map(([cityId, val]) => ({ city: getCityName(cityId), demand: Math.round(val) }))
       .sort((a, b) => b.demand - a.demand)
       .slice(0, 10)
   }, [filtered])
@@ -122,12 +126,16 @@ export default function Overview() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         <div className="card">
           <p className="section-title">Recommendations by Class</p>
-          <ResponsiveContainer width="100%" height={260}>
-            <BarChart data={classDist} margin={{ top: 4, right: 16, left: 0, bottom: 4 }}>
+          <ResponsiveContainer width="100%" height={280}>
+            <BarChart data={classDist} margin={{ top: 8, right: 16, left: 56, bottom: 36 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-              <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-              <YAxis tick={{ fontSize: 12 }} />
-              <Tooltip />
+              <XAxis dataKey="name" tick={{ fontSize: 11 }}>
+                <Label value="Recommendation Class" offset={-24} position="insideBottom" style={AXIS_LABEL} />
+              </XAxis>
+              <YAxis tick={{ fontSize: 11 }}>
+                <Label value="SKU-Store-Weeks" angle={-90} position="insideLeft" offset={-40} style={AXIS_LABEL} />
+              </YAxis>
+              <Tooltip formatter={(v) => [v.toLocaleString(), 'SKU-Store-Weeks']} />
               <Bar dataKey="count" radius={[4, 4, 0, 0]}>
                 {classDist.map(d => (
                   <Cell key={d.name} fill={CLASS_COLORS[d.name] ?? '#94a3b8'} />
@@ -139,12 +147,16 @@ export default function Overview() {
 
         <div className="card">
           <p className="section-title">Sales Confidence Score Distribution</p>
-          <ResponsiveContainer width="100%" height={260}>
-            <BarChart data={scoreHist} margin={{ top: 4, right: 16, left: 0, bottom: 4 }}>
+          <ResponsiveContainer width="100%" height={280}>
+            <BarChart data={scoreHist} margin={{ top: 8, right: 16, left: 56, bottom: 36 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-              <XAxis dataKey="range" tick={{ fontSize: 10 }} interval={1} />
-              <YAxis tick={{ fontSize: 12 }} />
-              <Tooltip />
+              <XAxis dataKey="range" tick={{ fontSize: 10 }} interval={1}>
+                <Label value="Score Range (0–100)" offset={-24} position="insideBottom" style={AXIS_LABEL} />
+              </XAxis>
+              <YAxis tick={{ fontSize: 11 }}>
+                <Label value="SKU-Store-Weeks" angle={-90} position="insideLeft" offset={-40} style={AXIS_LABEL} />
+              </YAxis>
+              <Tooltip formatter={(v) => [v.toLocaleString(), 'SKU-Store-Weeks']} />
               <Bar dataKey="count" fill="#6366f1" radius={[3, 3, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
@@ -155,13 +167,17 @@ export default function Overview() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="card">
           <p className="section-title">Top 10 SKUs by Recovered Demand Opportunity</p>
-          <ResponsiveContainer width="100%" height={260}>
+          <ResponsiveContainer width="100%" height={280}>
             <BarChart data={topSkuRecovered} layout="vertical"
-              margin={{ top: 4, right: 24, left: 48, bottom: 4 }}>
+              margin={{ top: 8, right: 40, left: 48, bottom: 36 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-              <XAxis type="number" tick={{ fontSize: 12 }} />
-              <YAxis type="category" dataKey="sku" tick={{ fontSize: 11 }} width={56} />
-              <Tooltip />
+              <XAxis type="number" tick={{ fontSize: 11 }}>
+                <Label value="Recovered Units (estimated)" offset={-24} position="insideBottom" style={AXIS_LABEL} />
+              </XAxis>
+              <YAxis type="category" dataKey="sku" tick={{ fontSize: 11 }} width={48}>
+                <Label value="SKU ID" angle={-90} position="insideLeft" offset={-32} style={AXIS_LABEL} />
+              </YAxis>
+              <Tooltip formatter={(v) => [v.toLocaleString(), 'Recovered Units']} />
               <Bar dataKey="recovered" fill="#ef4444" radius={[0, 4, 4, 0]} />
             </BarChart>
           </ResponsiveContainer>
@@ -169,12 +185,16 @@ export default function Overview() {
 
         <div className="card">
           <p className="section-title">Top Cities by Estimated True Demand</p>
-          <ResponsiveContainer width="100%" height={260}>
-            <BarChart data={topCitySales} margin={{ top: 4, right: 16, left: 0, bottom: 4 }}>
+          <ResponsiveContainer width="100%" height={280}>
+            <BarChart data={topCitySales} margin={{ top: 8, right: 16, left: 56, bottom: 56 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-              <XAxis dataKey="city" tick={{ fontSize: 12 }} />
-              <YAxis tick={{ fontSize: 12 }} />
-              <Tooltip />
+              <XAxis dataKey="city" tick={{ fontSize: 11 }} angle={-35} textAnchor="end" interval={0}>
+                <Label value="City (proxy)" offset={-44} position="insideBottom" style={AXIS_LABEL} />
+              </XAxis>
+              <YAxis tick={{ fontSize: 11 }}>
+                <Label value="Estimated Units" angle={-90} position="insideLeft" offset={-40} style={AXIS_LABEL} />
+              </YAxis>
+              <Tooltip formatter={(v) => [v.toLocaleString(), 'Estimated Units']} />
               <Bar dataKey="demand" fill="#3b82f6" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
