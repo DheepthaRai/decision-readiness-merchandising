@@ -1,8 +1,10 @@
 import { useState, useMemo } from 'react'
 import {
-  LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip,
-  ResponsiveContainer, CartesianGrid, Legend,
+  BarChart, Bar, XAxis, YAxis, Tooltip,
+  ResponsiveContainer, CartesianGrid, Label,
 } from 'recharts'
+
+const AXIS_LABEL = { fontSize: 11, fill: '#64748b' }
 import { useRecommendations } from '../hooks/useData'
 import { useFilters } from '../hooks/useFilters'
 import { CLASS_PLAIN, REASON_PLAIN, SCORE_LABELS } from '../utils/constants'
@@ -88,12 +90,16 @@ function DetailPanel({ row }) {
         {/* Demand waterfall */}
         <div>
           <p className="section-title">Observed vs. Estimated Demand</p>
-          <ResponsiveContainer width="100%" height={200}>
-            <BarChart data={demandData} margin={{ top: 4, right: 16, left: 0, bottom: 4 }}>
+          <ResponsiveContainer width="100%" height={220}>
+            <BarChart data={demandData} margin={{ top: 4, right: 16, left: 52, bottom: 36 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-              <XAxis dataKey="name" tick={{ fontSize: 10 }} />
-              <YAxis tick={{ fontSize: 11 }} />
-              <Tooltip />
+              <XAxis dataKey="name" tick={{ fontSize: 10 }} angle={-15} textAnchor="end" interval={0}>
+                <Label value="Demand Measure" offset={-24} position="insideBottom" style={AXIS_LABEL} />
+              </XAxis>
+              <YAxis tick={{ fontSize: 11 }}>
+                <Label value="Units" angle={-90} position="insideLeft" offset={-38} style={AXIS_LABEL} />
+              </YAxis>
+              <Tooltip formatter={(v) => [v.toLocaleString(), 'Units']} />
               <Bar dataKey="value" fill="#3b82f6" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>

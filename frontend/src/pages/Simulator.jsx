@@ -1,8 +1,10 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
-  CartesianGrid, Cell, Legend,
+  CartesianGrid, Cell, Legend, Label,
 } from 'recharts'
+
+const AXIS_LABEL = { fontSize: 11, fill: '#64748b' }
 import { useRecommendations } from '../hooks/useData'
 import { recomputeScores } from '../utils/scoring'
 import { exportCSV } from '../utils/csv'
@@ -212,13 +214,17 @@ export default function Simulator() {
       {/* Before / After comparison */}
       <div className="card mb-6">
         <p className="section-title">Before vs. After Class Distribution</p>
-        <ResponsiveContainer width="100%" height={280}>
-          <BarChart data={comparison} margin={{ top: 4, right: 16, left: 0, bottom: 4 }}>
+        <ResponsiveContainer width="100%" height={300}>
+          <BarChart data={comparison} margin={{ top: 4, right: 16, left: 56, bottom: 36 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-            <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-            <YAxis tick={{ fontSize: 12 }} />
-            <Tooltip />
-            <Legend />
+            <XAxis dataKey="name" tick={{ fontSize: 11 }}>
+              <Label value="Recommendation Class" offset={-24} position="insideBottom" style={AXIS_LABEL} />
+            </XAxis>
+            <YAxis tick={{ fontSize: 11 }}>
+              <Label value="SKU-Store-Weeks (sample)" angle={-90} position="insideLeft" offset={-42} style={AXIS_LABEL} />
+            </YAxis>
+            <Tooltip formatter={(v, name) => [v.toLocaleString(), name]} />
+            <Legend verticalAlign="top" />
             <Bar dataKey="Original"   fill="#94a3b8" radius={[4, 4, 0, 0]} />
             <Bar dataKey="Recomputed" radius={[4, 4, 0, 0]}>
               {comparison.map(d => (

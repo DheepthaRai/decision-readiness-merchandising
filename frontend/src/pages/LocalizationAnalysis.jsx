@@ -1,8 +1,10 @@
 import { useState, useMemo } from 'react'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
-  CartesianGrid, Cell,
+  CartesianGrid, Cell, Label,
 } from 'recharts'
+
+const AXIS_LABEL = { fontSize: 11, fill: '#64748b' }
 import { useRecommendations } from '../hooks/useData'
 import { LoadingSpinner, ErrorState } from '../components/LoadingState'
 import { getCityName } from '../utils/cityMap'
@@ -131,13 +133,19 @@ export default function LocalizationAnalysis() {
           <p className="section-title">
             {selectedSku ? `Demand by City — SKU ${selectedSku}` : 'Estimated True Demand by City (all SKUs)'}
           </p>
-          <ResponsiveContainer width="100%" height={280}>
+          <ResponsiveContainer width="100%" height={300}>
             <BarChart data={cityDemand.slice(0, 20)}
-              margin={{ top: 4, right: 16, left: 0, bottom: 4 }}>
+              margin={{ top: 4, right: 16, left: 56, bottom: 52 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-              <XAxis dataKey="city" tick={{ fontSize: 11 }} />
-              <YAxis tick={{ fontSize: 11 }} />
-              <Tooltip />
+              <XAxis dataKey="city" tick={{ fontSize: 10 }} angle={-35} textAnchor="end" interval={0}>
+                <Label value="City (proxy)" offset={-40} position="insideBottom" style={AXIS_LABEL} />
+              </XAxis>
+              <YAxis tick={{ fontSize: 11 }}>
+                <Label value="Estimated True Demand (units)" angle={-90} position="insideLeft" offset={-42} style={AXIS_LABEL} />
+              </YAxis>
+              <Tooltip
+                formatter={(v) => [v.toLocaleString(), 'Estimated Units']}
+              />
               <Bar dataKey="demand" fill="#3b82f6" radius={[4, 4, 0, 0]}>
                 {cityDemand.slice(0, 20).map((d, i) => (
                   <Cell key={i} fill={i === 0 ? '#2563eb' : '#93c5fd'} />

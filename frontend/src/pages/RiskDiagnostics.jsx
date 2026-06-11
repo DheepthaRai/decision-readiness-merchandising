@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
-  CartesianGrid, Cell, ScatterChart, Scatter, Legend,
+  CartesianGrid, Cell, Label,
 } from 'recharts'
 import { useRecommendations } from '../hooks/useData'
 import { useFilters } from '../hooks/useFilters'
@@ -10,6 +10,10 @@ import { getCityName } from '../utils/cityMap'
 import FilterBar from '../components/FilterBar'
 import ClassBadge from '../components/ClassBadge'
 import { LoadingSpinner, ErrorState } from '../components/LoadingState'
+
+const AXIS_LABEL = { fontSize: 11, fill: '#64748b' }
+
+const fmtNum = (v) => Number(v).toLocaleString(undefined, { maximumFractionDigits: 1 })
 
 const SUGGESTED_ACTIONS = {
   ESCALATE_STOCKOUT_CENSORED_DEMAND: 'Investigate supply chain. Review safety stock levels.',
@@ -58,11 +62,12 @@ export default function RiskDiagnostics() {
   const recoveredBySku = useMemo(() => {
     const agg = {}
     filtered.forEach(r => {
-      if (!agg[r.sku_id]) agg[r.sku_id] = { sku: String(r.sku_id), val: 0 }
-      agg[r.sku_id].val += r.recovered_units ?? 0
+      if (!agg[r.sku_id]) agg[r.sku_id] = { sku: String(r.sku_id), recovered: 0 }
+      agg[r.sku_id].recovered += r.recovered_units ?? 0
     })
     return Object.values(agg)
-      .sort((a, b) => b.val - a.val).slice(0, 15)
+      .map(s => ({ sku: s.sku, recovered: Math.round(s.recovered) }))
+      .sort((a, b) => b.recovered - a.recovered).slice(0, 15)
   }, [filtered])
 
   /* Volatility distribution */
@@ -77,7 +82,7 @@ export default function RiskDiagnostics() {
     return bins
   }, [filtered])
 
-  /* Promo vs non-promo average sales (simple split) */
+  /* Promo vs non-promo average sales */
   const promoDist = useMemo(() => {
     let promoSum = 0, promoN = 0, baseSum = 0, baseN = 0
     filtered.forEach(r => {
@@ -88,19 +93,16 @@ export default function RiskDiagnostics() {
       else         { baseSum  += sales; baseN++ }
     })
     return [
-      { group: 'During Promotions',    avg: promoN ? +(promoSum / promoN).toFixed(1) : 0 },
-      { group: 'Without Promotions',   avg: baseN  ? +(baseSum  / baseN ).toFixed(1) : 0 },
+      { group: 'During Promotions',  avg: promoN ? +(promoSum / promoN).toFixed(1) : 0 },
+      { group: 'Without Promotions', avg: baseN  ? +(baseSum  / baseN ).toFixed(1) : 0 },
     ]
   }, [filtered])
 
-  /* Escalation queue + stockout pattern classification */
+  /* Escalation queue */
   const escalationQueue = useMemo(() => {
     const escalated = filtered.filter(r => r.recommendation_class === 'Escalate')
-
-    // Build lookup: for each (sku_id, city_id, week_label), count how many distinct
-    // stores have a high stockout rate (> escalate threshold proxy = 0.80)
     const HIGH_STOCKOUT = 0.80
-    const cityCounts = {}  // key → Set of store_ids
+    const cityCounts = {}
     escalated.forEach(r => {
       if ((r.stockout_rate ?? 0) > HIGH_STOCKOUT) {
         const key = `${r.sku_id}||${r.city_id}||${r.week_label}`
@@ -108,7 +110,6 @@ export default function RiskDiagnostics() {
         cityCounts[key].add(String(r.store_id))
       }
     })
-
     return escalated
       .sort((a, b) => (b.stockout_rate ?? 0) - (a.stockout_rate ?? 0))
       .slice(0, 100)
@@ -139,13 +140,20 @@ export default function RiskDiagnostics() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         <div className="card">
           <p className="section-title">Top 15 SKUs by Stockout Rate</p>
-          <ResponsiveContainer width="100%" height={260}>
+          <ResponsiveContainer width="100%" height={300}>
             <BarChart data={stockoutBySku} layout="vertical"
-              margin={{ top: 4, right: 24, left: 48, bottom: 4 }}>
+              margin={{ top: 4, right: 32, left: 48, bottom: 36 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-              <XAxis type="number" unit="%" tick={{ fontSize: 11 }} />
-              <YAxis type="category" dataKey="sku" tick={{ fontSize: 11 }} width={56} />
-              <Tooltip formatter={v => `${v}%`} />
+              <XAxis type="number" tick={{ fontSize: 11 }} domain={[0, 100]}>
+                <Label value="Avg. Stockout Rate (%)" offset={-24} position="insideBottom" style={AXIS_LABEL} />
+              </XAxis>
+              <YAxis type="category" dataKey="sku" tick={{ fontSize: 11 }} width={44}>
+                <Label value="SKU ID" angle={-90} position="insideLeft" offset={-32} style={AXIS_LABEL} />
+              </YAxis>
+              <Tooltip
+                labelFormatter={(sku) => `SKU ${sku}`}
+                formatter={(v) => [`${v}%`, 'Avg. Stockout Rate']}
+              />
               <Bar dataKey="rate" fill="#ef4444" radius={[0, 4, 4, 0]} />
             </BarChart>
           </ResponsiveContainer>
@@ -153,13 +161,20 @@ export default function RiskDiagnostics() {
 
         <div className="card">
           <p className="section-title">Stockout Rate by City</p>
-          <ResponsiveContainer width="100%" height={260}>
+          <ResponsiveContainer width="100%" height={300}>
             <BarChart data={stockoutByCity}
-              margin={{ top: 4, right: 16, left: 0, bottom: 4 }}>
+              margin={{ top: 4, right: 16, left: 52, bottom: 52 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-              <XAxis dataKey="city" tick={{ fontSize: 11 }} />
-              <YAxis unit="%" tick={{ fontSize: 11 }} />
-              <Tooltip formatter={v => `${v}%`} />
+              <XAxis dataKey="city" tick={{ fontSize: 10 }} angle={-35} textAnchor="end" interval={0}>
+                <Label value="City (proxy)" offset={-40} position="insideBottom" style={AXIS_LABEL} />
+              </XAxis>
+              <YAxis tick={{ fontSize: 11 }}>
+                <Label value="Avg. Stockout Rate (%)" angle={-90} position="insideLeft" offset={-38} style={AXIS_LABEL} />
+              </YAxis>
+              <Tooltip
+                labelFormatter={(city) => city}
+                formatter={(v) => [`${v}%`, 'Avg. Stockout Rate']}
+              />
               <Bar dataKey="rate" radius={[4, 4, 0, 0]}>
                 {stockoutByCity.map((d, i) => (
                   <Cell key={i} fill={d.rate > 30 ? '#ef4444' : d.rate > 15 ? '#eab308' : '#22c55e'} />
@@ -174,26 +189,39 @@ export default function RiskDiagnostics() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
         <div className="card col-span-1">
           <p className="section-title">Recovered Demand by SKU (Top 15)</p>
-          <ResponsiveContainer width="100%" height={240}>
+          <ResponsiveContainer width="100%" height={300}>
             <BarChart data={recoveredBySku} layout="vertical"
-              margin={{ top: 4, right: 24, left: 48, bottom: 4 }}>
+              margin={{ top: 4, right: 24, left: 48, bottom: 36 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-              <XAxis type="number" tick={{ fontSize: 11 }} />
-              <YAxis type="category" dataKey="sku" tick={{ fontSize: 11 }} width={56} />
-              <Tooltip />
-              <Bar dataKey="val" fill="#f97316" radius={[0, 4, 4, 0]} />
+              <XAxis type="number" tick={{ fontSize: 11 }}>
+                <Label value="Recovered Units (est.)" offset={-24} position="insideBottom" style={AXIS_LABEL} />
+              </XAxis>
+              <YAxis type="category" dataKey="sku" tick={{ fontSize: 11 }} width={44}>
+                <Label value="SKU ID" angle={-90} position="insideLeft" offset={-32} style={AXIS_LABEL} />
+              </YAxis>
+              <Tooltip
+                labelFormatter={(sku) => `SKU ${sku}`}
+                formatter={(v) => [fmtNum(v), 'Recovered Units (est.)']}
+              />
+              <Bar dataKey="recovered" fill="#f97316" radius={[0, 4, 4, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
 
         <div className="card col-span-1">
           <p className="section-title">Promotion Dependency: Avg Sales</p>
-          <ResponsiveContainer width="100%" height={240}>
-            <BarChart data={promoDist} margin={{ top: 4, right: 16, left: 0, bottom: 4 }}>
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={promoDist} margin={{ top: 4, right: 16, left: 52, bottom: 52 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-              <XAxis dataKey="group" tick={{ fontSize: 11 }} />
-              <YAxis tick={{ fontSize: 11 }} />
-              <Tooltip />
+              <XAxis dataKey="group" tick={{ fontSize: 10 }} angle={-20} textAnchor="end" interval={0}>
+                <Label value="Sales Period" offset={-40} position="insideBottom" style={AXIS_LABEL} />
+              </XAxis>
+              <YAxis tick={{ fontSize: 11 }}>
+                <Label value="Avg. Units Sold per Row" angle={-90} position="insideLeft" offset={-38} style={AXIS_LABEL} />
+              </YAxis>
+              <Tooltip
+                formatter={(v) => [fmtNum(v), 'Avg. Units Sold']}
+              />
               <Bar dataKey="avg" radius={[4, 4, 0, 0]}>
                 <Cell fill="#eab308" />
                 <Cell fill="#22c55e" />
@@ -204,16 +232,20 @@ export default function RiskDiagnostics() {
 
         <div className="card col-span-1">
           <p className="section-title">Volatility Score Distribution</p>
-          <ResponsiveContainer width="100%" height={240}>
-            <BarChart data={volDist} margin={{ top: 4, right: 16, left: 0, bottom: 4 }}>
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={volDist} margin={{ top: 4, right: 16, left: 52, bottom: 36 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-              <XAxis dataKey="range" tick={{ fontSize: 10 }} />
-              <YAxis tick={{ fontSize: 11 }} />
-              <Tooltip />
+              <XAxis dataKey="range" tick={{ fontSize: 10 }}>
+                <Label value="Low Volatility Score (0–100)" offset={-24} position="insideBottom" style={AXIS_LABEL} />
+              </XAxis>
+              <YAxis tick={{ fontSize: 11 }}>
+                <Label value="SKU-Store-Weeks" angle={-90} position="insideLeft" offset={-38} style={AXIS_LABEL} />
+              </YAxis>
+              <Tooltip formatter={(v) => [v.toLocaleString(), 'SKU-Store-Weeks']} />
               <Bar dataKey="count" fill="#8b5cf6" radius={[3, 3, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
-          <p className="text-xs text-slate-400 mt-2">Higher = lower volatility (better)</p>
+          <p className="text-xs text-slate-400 mt-2">Higher score = lower volatility (more stable demand)</p>
         </div>
       </div>
 
