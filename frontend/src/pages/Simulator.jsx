@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   CartesianGrid, Cell, Legend,
@@ -73,11 +73,37 @@ function classDist(rows) {
   return Object.entries(counts).map(([name, count]) => ({ name, count }))
 }
 
+// Deterministic sample: pick every Nth row so the sample is spread across
+// the full dataset rather than just the first N rows.
+const SAMPLE_SIZE = 5000
+
+function sampleRows(rows, n) {
+  if (rows.length <= n) return rows
+  const step = rows.length / n
+  return Array.from({ length: n }, (_, i) => rows[Math.floor(i * step)])
+}
+
+// Simple debounce hook — returns a debounced copy of the value.
+function useDebounced(value, delay = 300) {
+  const [debounced, setDebounced] = useState(value)
+  const timer = useRef(null)
+  useEffect(() => {
+    clearTimeout(timer.current)
+    timer.current = setTimeout(() => setDebounced(value), delay)
+    return () => clearTimeout(timer.current)
+  }, [value, delay])
+  return debounced
+}
+
 export default function Simulator() {
   const { data, loading, error } = useRecommendations()
   const [weights, setWeights] = useState(DEFAULT_WEIGHTS)
   const [thresholds, setThresholds] = useState(DEFAULT_THRESHOLDS)
   const [showTable, setShowTable] = useState(false)
+
+  // Debounce slider values so recomputation only fires after user stops dragging
+  const debouncedWeights    = useDebounced(weights, 250)
+  const debouncedThresholds = useDebounced(thresholds, 250)
 
   const weightTotal = Object.values(weights).reduce((s, v) => s + v, 0)
   const isValid = Math.abs(weightTotal - 1) < 0.01
@@ -90,12 +116,16 @@ export default function Simulator() {
     setThresholds(t => ({ ...t, [name]: val }))
   }, [])
 
-  const recomputed = useMemo(() => {
-    if (!data.length) return []
-    return recomputeScores(data, weights, thresholds)
-  }, [data, weights, thresholds])
+  // Sample once when data loads — stable reference, no re-sampling on slider changes
+  const sample = useMemo(() => sampleRows(data, SAMPLE_SIZE), [data])
 
-  const originalDist = useMemo(() => classDist(data), [data])
+  const recomputed = useMemo(() => {
+    if (!sample.length) return []
+    return recomputeScores(sample, debouncedWeights, debouncedThresholds)
+  }, [sample, debouncedWeights, debouncedThresholds])
+
+  // Original dist also uses the sample so the comparison is apples-to-apples
+  const originalDist = useMemo(() => classDist(sample), [sample])
   const newDist      = useMemo(() => classDist(recomputed), [recomputed])
 
   /* Merge for grouped bar chart */
@@ -118,7 +148,7 @@ export default function Simulator() {
       <h1 className="page-title">Recommendation Simulator</h1>
       <p className="page-subtitle">
         Adjust scoring weights and thresholds to see how the recommendation mix changes.
-        This is a what-if tool — changes here do not affect the saved pipeline output.
+        Runs on a {SAMPLE_SIZE.toLocaleString()}-row sample for responsiveness — changes here do not affect the saved pipeline output.
       </p>
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-6">
@@ -203,7 +233,7 @@ export default function Simulator() {
       <div className="flex items-center gap-3 mb-4">
         <button
           className="btn-primary"
-          onClick={() => exportCSV(recomputed, 'simulated_recommendations.csv')}
+          onClick={() => exportCSV(recomputed, 'simulated_recommendations_sample.csv')}
         >
           ⬇ Export Recomputed Recommendations CSV
         </button>
