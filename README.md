@@ -95,70 +95,7 @@ Five-page React + Vite application (no backend — all data from static CSVs):
 
 ---
 
-## Running Locally
-
-### Prerequisites
-```
-Python 3.10+   Node 18+
-```
-
-### 1. Install Python dependencies
-```bash
-pip install -r requirements.txt
-```
-
-### 2. Run the data pipeline
-
-```bash
-# Full run — train split (~4.5M rows, 10–20 min)
-python run_pipeline.py
-
-# Fast run — eval split (~350K rows, recommended for development)
-python run_pipeline.py --split eval
-
-# Run pipeline AND copy CSVs to frontend automatically
-python run_pipeline.py --split eval --copy-to-frontend
-```
-
-### 3. Copy outputs to frontend (skip if you used `--copy-to-frontend`)
-```bash
-mkdir -p frontend/public/data
-cp outputs/*.csv frontend/public/data/
-```
-
-### 4. Run the React dev server
-```bash
-cd frontend
-npm install
-npm run dev
-# → http://localhost:5173/decision-readiness-merchandising/
-```
-
----
-
-## Deploying to GitHub Pages
-
-### Automatic (recommended)
-Every push to `main` triggers `.github/workflows/deploy.yml` which:
-1. Runs `python run_pipeline.py --split eval` to generate CSVs
-2. Copies `outputs/*.csv` → `frontend/public/data/`
-3. Runs `npm run build` inside `frontend/`
-4. Deploys `frontend/dist/` to the `gh-pages` branch
-
-One-time setup: in repo Settings → Pages, set source to **gh-pages branch**.
-
-### Manual deploy
-```bash
-# Make sure CSVs are in frontend/public/data/ first (see step 3 above)
-cd frontend
-npm run build    # → frontend/dist/
-npm run deploy   # pushes dist/ to gh-pages via gh-pages npm package
-```
-
-Live URL after deploy:
-```
-https://<your-github-username>.github.io/decision-readiness-merchandising/
-```
+Check it out here: [Decision Readiness MerchOps](https://dheeptharai.github.io/decision-readiness-merchandising)
 
 ---
 
@@ -209,16 +146,12 @@ The mapping used in this dashboard is **inferred from climate fingerprinting**: 
 | 16 | Suzhou     | MED  | 89 stores; core Yangtze Delta market |
 | 17 | Jiaxing    | LOW  | 5 stores; very rainy 9.7 mm/day; between Shanghai and Hangzhou |
 
-### Display conventions
-
-- **No suffix** = HIGH confidence; name shown as-is (e.g., `Shanghai`)
-- **`?` suffix** = MED confidence (e.g., `Hangzhou ?`)
-- **`??` suffix** = LOW confidence (e.g., `Chongqing ??`)
-
-In the React UI, all city dropdowns and table cells display city names using these conventions. The raw `city_id` integer is preserved in parentheses in the filter dropdowns (e.g., `Shanghai (city 0)`) so that analysts can cross-reference with the underlying CSV.
-
 ### Disclaimer
 
 ⚠️ **This mapping has not been confirmed by Dingdong-Inc or the FreshRetailNet-50K dataset authors.** It is a climate-inference proxy used for portfolio demonstration purposes. Do not use it for operational decisions or to make geographic attribution claims about the underlying data.
 
 The complete mapping is also stored in `config.yaml` under `city_proxy_map`, and in `frontend/src/utils/cityMap.js`.
+
+---
+
+Built for class final project - [MEM 410: Managerial Analytics](https://www.mccormick.northwestern.edu/engineering-management/curriculum/descriptions/410.html) by [Prof. Mike Watson](https://www.mccormick.northwestern.edu/research-faculty/directory/profiles/watson-michael.html)
