@@ -7,6 +7,9 @@ const NAV = [
   { to: '/localization', label: 'Localization',        icon: '🗺️' },
   { to: '/risk',         label: 'Risk Diagnostics',   icon: '⚠️' },
   { to: '/simulator',    label: 'Simulator',           icon: '🎛️' },
+  { divider: true },
+  { to: '/forecasting',  label: 'Demand Forecast',    icon: '📈' },
+  { to: '/optimizer',    label: 'Inv. Optimizer',     icon: '⚙️' },
 ]
 
 export default function Layout({ children }) {
@@ -19,24 +22,28 @@ export default function Layout({ children }) {
           <h1 className="text-base font-bold text-slate-800 leading-tight">Decision Readiness</h1>
         </div>
         <nav className="flex-1 px-3 py-4 space-y-1">
-          {NAV.map(({ to, label, icon, highlight }) => (
-            <NavLink
-              key={to}
-              to={to}
-              end={to === '/'}
-              className={({ isActive }) =>
-                `flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors
-                 ${isActive
-                   ? 'bg-slate-100 text-slate-900'
-                   : highlight
-                     ? 'text-slate-700 bg-amber-50 hover:bg-amber-100 border border-amber-200'
-                     : 'text-slate-600 hover:bg-slate-50 hover:text-slate-800'}`
-              }
-            >
-              <span>{icon}</span>
-              <span>{label}</span>
-            </NavLink>
-          ))}
+          {NAV.map((item, i) =>
+            item.divider ? (
+              <div key={`divider-${i}`} className="my-2 border-t border-border" />
+            ) : (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                end={item.to === '/'}
+                className={({ isActive }) =>
+                  `flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors
+                   ${isActive
+                     ? 'bg-slate-100 text-slate-900'
+                     : item.highlight
+                       ? 'text-slate-700 bg-amber-50 hover:bg-amber-100 border border-amber-200'
+                       : 'text-slate-600 hover:bg-slate-50 hover:text-slate-800'}`
+                }
+              >
+                <span>{item.icon}</span>
+                <span>{item.label}</span>
+              </NavLink>
+            )
+          )}
         </nav>
         <div className="px-5 py-4 border-t border-border">
           <p className="text-xs text-slate-400 leading-relaxed">

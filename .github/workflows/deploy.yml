@@ -37,16 +37,19 @@ jobs:
       - name: Create output directories
         run: mkdir -p outputs data/interim data/processed
 
-      - name: Run data pipeline
-        run: python run_pipeline.py --split eval
+      - name: Run data pipeline (V1 + V2)
+        run: python run_pipeline.py --split eval --v2
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}   # optional; dataset is public
 
-      # ── 4. Copy CSVs into frontend/public/data/ ───────────────────────────
+      # ── 4. Copy outputs into frontend/public/data/ ────────────────────────
       - name: Copy pipeline outputs to frontend
         run: |
           mkdir -p frontend/public/data
-          cp outputs/*.csv frontend/public/data/
+          python run_pipeline.py --skip-load --copy-to-frontend || true
+          # Fallback: copy any remaining CSVs and JSONs directly
+          cp outputs/*.csv frontend/public/data/ 2>/dev/null || true
+          cp outputs/*.json frontend/public/data/ 2>/dev/null || true
 
       # ── 5. Node setup ──────────────────────────────────────────────────────
       - name: Set up Node 20

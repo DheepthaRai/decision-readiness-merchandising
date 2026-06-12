@@ -121,3 +121,28 @@ city_proxy_map:
   15: { name: "Xi'an",   confidence: low,  climate_basis: "30.4°C; hot dry inland northwest summer" }
   16: { name: Suzhou,    confidence: med,  climate_basis: "89 stores; core Yangtze Delta market; 28°C, RH 77%" }
   17: { name: Jiaxing,   confidence: low,  climate_basis: "5 stores; very rainy 9.7 mm/day; between Shanghai and Hangzhou" }
+
+# ── V2: Forecasting ──────────────────────────────────────────────────────────
+# Forecast next-week estimated_true_demand (not observed sales — censored).
+# Time-based split only. With 2 eval-split weeks, train=W26, test=W27.
+forecasting:
+  target: estimated_true_demand
+  horizon: 1_week
+  model: lightgbm
+  fallback_model: hist_gradient_boosting
+  primary_kpi: mae
+  test_period: latest_week    # train on earlier weeks, test on latest
+  sample_size_for_dashboard: 5000  # rows to copy to frontend/public/data/
+
+# ── V2: Inventory ────────────────────────────────────────────────────────────
+# recommended_stock_qty = forecasted_demand + safety_stock
+# safety_stock = service_level_z × forecast_error_std (per SKU-store)
+# All parameters are proxy values — dataset has no real costs or shelf data.
+inventory:
+  service_level_z: 1.28           # Normal-dist z for ~90% service level
+  minimum_stock_qty: 1
+  max_stock_qty: null             # null = no cap
+  unit_cost_proxy: 1.0            # proxy USD per unit (no real costs in dataset)
+  shelf_space_units_proxy: 1.0    # proxy units of shelf space per SKU
+  safety_stock_method: forecast_error_std
+  high_demand_percentile: 70      # top 30% of forecasted demand = "high demand"

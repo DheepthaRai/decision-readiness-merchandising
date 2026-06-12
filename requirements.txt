@@ -7,3 +7,5 @@ datasets>=2.18
 pyarrow>=14.0
 huggingface_hub>=0.21
 pyyaml>=6.0
+scipy>=1.11
+lightgbm>=4.0
